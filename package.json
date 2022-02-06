@@ -11,7 +11,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@truffle/hdwallet-provider": "^2.0.2",
+    "@truffle/hdwallet-provider": "2.0.0",
     "cors": "^2.8.5",
     "ethereumjs-util": "^7.1.4",
     "ethereumjs-wallet": "^1.0.2",
