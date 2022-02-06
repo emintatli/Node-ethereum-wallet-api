@@ -65,28 +65,34 @@ const createAccessToken = async (data) => {
 };
 
 const register = async (data, res) => {
-  if (
-    data.username &&
-    data.password &&
-    data.pin &&
-    (await checkAlreadyExist(data, res)) === false
-  ) {
-    const database = client.db("walletapp");
-    const collection = database.collection("walletapp");
-    const userWallet = createWalletForNewUser();
-    const doc = {
-      username: data.username,
-      password: await sha256(data.password),
-      wallet: (await userWallet).address,
-      privateKey: (await userWallet).privateKey,
-      accessToken: await createAccessToken(data),
-      pin: data.pin,
-    };
-    await collection.insertOne(doc);
-    res.status(200).json({ status: "User Registered" });
-  } else {
-    res.status(400).json({ err: "invalid details." });
+  try{
+    if (
+      data.username &&
+      data.password &&
+      data.pin &&
+      (await checkAlreadyExist(data, res)) === false
+    ) {
+      const database = client.db("walletapp");
+      const collection = database.collection("walletapp");
+      const userWallet = createWalletForNewUser();
+      const doc = {
+        username: data.username,
+        password: await sha256(data.password),
+        wallet: (await userWallet).address,
+        privateKey: (await userWallet).privateKey,
+        accessToken: await createAccessToken(data),
+        pin: data.pin,
+      };
+      await collection.insertOne(doc);
+      res.status(200).json({ status: "User Registered" });
+    } else {
+      res.status(400).json({ err: "invalid details." });
+    }
   }
+  catch(err){
+    console.log(err)
+  }
+
 };
 
 const registerWithPrivate = async (data, res) => {
@@ -97,10 +103,7 @@ const registerWithPrivate = async (data, res) => {
     var address = utils.pubToAddress(publicKey);
     var channelAddress = address.toString("hex");
     walletAddress = Web3.utils.toChecksumAddress(channelAddress);
-  } catch (err) {
-    console.log(err);
-    res.status(400).json({ err });
-  }
+ 
   if (
     data.username &&
     data.password &&
@@ -127,22 +130,32 @@ const registerWithPrivate = async (data, res) => {
   } else {
     res.status(400).json({ err: "invalid details." });
   }
+} catch (err) {
+  console.log(err);
+  res.status(400).json({ err });
+}
 };
 
 const login = async (data, res) => {
-  if (data.username && data.password) {
-    const database = client.db("walletapp");
-    const collection = database.collection("walletapp");
-    const query = { username: data.username, password: sha256(data.password) };
-    const user = await collection.findOne(query);
-    if (user) {
-      res
-        .status(200)
-        .json({ username: user.username, wallet: user.wallet, accessToken: user.accessToken });
-    } else {
-      res.status(400).json({ err: "invalid details." });
+  try{
+    if (data.username && data.password) {
+      const database = client.db("walletapp");
+      const collection = database.collection("walletapp");
+      const query = { username: data.username, password: sha256(data.password) };
+      const user = await collection.findOne(query);
+      if (user) {
+        res
+          .status(200)
+          .json({ username: user.username, wallet: user.wallet, accessToken: user.accessToken });
+      } else {
+        res.status(400).json({ err: "invalid details." });
+      }
     }
   }
+  catch(err){
+    console.log(err)
+  }
+
 };
 
 const getUserInfo = async (data, res) => {
@@ -182,30 +195,36 @@ const checkPin = async (accessToken, pin) => {
 };
 
 const sendBalancetoAddress = async (data, res) => {
-  if (await checkPin(data.accessToken, data.pin)) {
-    const userDetails = await getUserInfo(data, res);
-    const provider = new HDWalletProvider(userDetails.privateKey, rpcUrl);
-    const web3 = new Web3(provider);
-    const contractAbi = [
-      {
-        inputs: [
-          { internalType: "address", name: "recipient", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-        ],
-        name: "transfer",
-        outputs: [{ internalType: "bool", name: "", type: "bool" }],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-    ];
-    const contract = new web3.eth.Contract(contractAbi, data.tokenAddress);
-    const tx = await contract.methods
-      .transfer(data.to, data.amount)
-      .send({ from: userDetails.wallet });
-    res.status(200).json({ tx });
-  } else {
-    res.status(400).json({ err: "incorrect pin" });
+  try{
+    if (await checkPin(data.accessToken, data.pin)) {
+      const userDetails = await getUserInfo(data, res);
+      const provider = new HDWalletProvider(userDetails.privateKey, rpcUrl);
+      const web3 = new Web3(provider);
+      const contractAbi = [
+        {
+          inputs: [
+            { internalType: "address", name: "recipient", type: "address" },
+            { internalType: "uint256", name: "amount", type: "uint256" },
+          ],
+          name: "transfer",
+          outputs: [{ internalType: "bool", name: "", type: "bool" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ];
+      const contract = new web3.eth.Contract(contractAbi, data.tokenAddress);
+      const tx = await contract.methods
+        .transfer(data.to, data.amount)
+        .send({ from: userDetails.wallet });
+      res.status(200).json({ tx });
+    } else {
+      res.status(400).json({ err: "incorrect pin" });
+    }
   }
+  catch(err){
+    console.log(err)
+  }
+
 };
 
 const searchUser = async (username) => {
@@ -227,39 +246,45 @@ const searchUser = async (username) => {
 };
 
 const sendBalancetoUser = async (data, res) => {
-  if (await checkPin(data.accessToken, data.pin)) {
-    const userDetails = await getUserInfo(data, res);
-    const provider = new HDWalletProvider(userDetails.privateKey, rpcUrl);
-    const web3 = new Web3(provider);
-    const contractAbi = [
-      {
-        inputs: [
-          { internalType: "address", name: "recipient", type: "address" },
-          { internalType: "uint256", name: "amount", type: "uint256" },
-        ],
-        name: "transfer",
-        outputs: [{ internalType: "bool", name: "", type: "bool" }],
-        stateMutability: "nonpayable",
-        type: "function",
-      },
-    ];
-    const contract = new web3.eth.Contract(contractAbi, data.tokenAddress);
-    const toSendWallet = await searchUser(data.toUser);
-    if (toSendWallet) {
-      const tx = await contract.methods
-        .transfer(toSendWallet, data.amount)
-        .send({ from: userDetails.wallet });
-      res.status(200).json({ tx });
+  try{
+    if (await checkPin(data.accessToken, data.pin)) {
+      const userDetails = await getUserInfo(data, res);
+      const provider = new HDWalletProvider(userDetails.privateKey, rpcUrl);
+      const web3 = new Web3(provider);
+      const contractAbi = [
+        {
+          inputs: [
+            { internalType: "address", name: "recipient", type: "address" },
+            { internalType: "uint256", name: "amount", type: "uint256" },
+          ],
+          name: "transfer",
+          outputs: [{ internalType: "bool", name: "", type: "bool" }],
+          stateMutability: "nonpayable",
+          type: "function",
+        },
+      ];
+      const contract = new web3.eth.Contract(contractAbi, data.tokenAddress);
+      const toSendWallet = await searchUser(data.toUser);
+      if (toSendWallet) {
+        const tx = await contract.methods
+          .transfer(toSendWallet, data.amount)
+          .send({ from: userDetails.wallet });
+        res.status(200).json({ tx });
+      } else {
+        res.status(400).json({ err: "user not found." });
+      }
     } else {
-      res.status(400).json({ err: "user not found." });
+      res.status(400).json({ err: "incorrect pin" });
     }
-  } else {
-    res.status(400).json({ err: "incorrect pin" });
   }
+ catch(err){
+   console.log(err)
+ }
 };
 const checkBalance = async (data, res) => {
+  try {
   if (data.accessToken && data.tokenAddress) {
-    try {
+ 
       const userDetails = await getUserInfo(data, res);
       const web3 = new Web3(rpcUrl);
       const tokenAbi = [
@@ -286,72 +311,79 @@ const checkBalance = async (data, res) => {
       const contract = new web3.eth.Contract(tokenAbi, data.tokenAddress);
       const tx = await contract.methods.balanceOf(userDetails.wallet).call();
       res.status(200).json({ tx });
-    } catch (err) {
-      res.status(400).json({ err });
-    }
+ 
   } else {
     res.status(400).json({ err: "invalid parameters" });
   }
+} catch (err) {
+  res.status(400).json({ err });
+}
 };
 
 app.use("/api/:id", express.json(), async (req, res) => {
-  const route  = req.params.id;
-  console.log(req.params.id)
-  const register_data = {
-    username: req.query.username,
-    password: req.query.password,
-    pin: req.query.pin,
-  };
-  const registerWithPrivate_data = {
-    username: req.query.username,
-    password: req.query.password,
-    privateKey: req.query.private,
-    pin: req.query.pin,
-  };
-  const login_data = {
-    username: req.query.username,
-    password: req.query.password,
-  };
-  const sendBalance_data = {
-    tokenAddress: req.query.tokenAddress,
-    amount: req.query.amount,
-    accessToken: req.query.accessToken,
-    to: req.query.to,
-    pin: req.query.pin,
-  };
-  const sendBalanceToUser_data = {
-    tokenAddress: req.query.tokenAddress,
-    amount: req.query.amount,
-    accessToken: req.query.accessToken,
-    toUser: req.query.toUser,
-    pin: req.query.pin,
-  };
-  const checkUserBalance = {
-    tokenAddress: req.query.tokenAddress,
-    accessToken: req.query.accessToken,
-  };
-  switch (route) {
-    case "register":
-      await register(register_data, res);
-      break;
-    case "registerWithPrivate":
-      await registerWithPrivate(registerWithPrivate_data, res);
-      break;
-    case "login":
-      await login(login_data, res);
-      break;
-    case "sendBalanceToAddress":
-      await sendBalancetoAddress(sendBalance_data, res);
-      break;
-    case "sendBalanceToUser":
-      await sendBalancetoUser(sendBalanceToUser_data, res);
-      break;
-    case "checkUserBalance":
-      await checkBalance(checkUserBalance, res);
-      break;
-    default:
-      res.status(400).json({ err: "api route error." });
+  try{
+    const route  = req.params.id;
+    console.log(req.params.id)
+    const register_data = {
+      username: req.query.username,
+      password: req.query.password,
+      pin: req.query.pin,
+    };
+    const registerWithPrivate_data = {
+      username: req.query.username,
+      password: req.query.password,
+      privateKey: req.query.private,
+      pin: req.query.pin,
+    };
+    const login_data = {
+      username: req.query.username,
+      password: req.query.password,
+    };
+    const sendBalance_data = {
+      tokenAddress: req.query.tokenAddress,
+      amount: req.query.amount,
+      accessToken: req.query.accessToken,
+      to: req.query.to,
+      pin: req.query.pin,
+    };
+    const sendBalanceToUser_data = {
+      tokenAddress: req.query.tokenAddress,
+      amount: req.query.amount,
+      accessToken: req.query.accessToken,
+      toUser: req.query.toUser,
+      pin: req.query.pin,
+    };
+    const checkUserBalance = {
+      tokenAddress: req.query.tokenAddress,
+      accessToken: req.query.accessToken,
+    };
+    switch (route) {
+      case "register":
+        await register(register_data, res);
+        break;
+      case "registerWithPrivate":
+        await registerWithPrivate(registerWithPrivate_data, res);
+        break;
+      case "login":
+        await login(login_data, res);
+        break;
+      case "sendBalanceToAddress":
+        await sendBalancetoAddress(sendBalance_data, res);
+        break;
+      case "sendBalanceToUser":
+        await sendBalancetoUser(sendBalanceToUser_data, res);
+        break;
+      case "checkUserBalance":
+        await checkBalance(checkUserBalance, res);
+        break;
+      default:
+        res.status(400).json({ err: "api route error." });
+    }
   }
+  catch(err){
+    res.status(400).json({ err });
+  }
+  
 });
 
 app.listen(process.env.PORT || 3002);
