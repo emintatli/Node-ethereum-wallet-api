@@ -12,6 +12,8 @@
 ->Web3.js
 ->Node.js
 ->Express.js
+### Note
+This app is runs on BSC testnet as default.You need to change it in main.js
 
 ### Example Calls
 
