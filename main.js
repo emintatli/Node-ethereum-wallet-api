@@ -10,7 +10,7 @@ const cors = require("cors");
 const app = express();
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const devMode = true;
-const uri = devMode ? "mongodb+srv://equationcomputer:VbDjISXvOt2smNfv@cluster0.1cb8i.mongodb.net" : "";
+const uri = devMode ? process.env.MONGODB_URI : "";
 const rpcUrl = devMode
   ? "https://data-seed-prebsc-1-s1.binance.org:8545/"
   : "https://bsc-dataseed.binance.org/";
